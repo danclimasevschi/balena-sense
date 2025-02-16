@@ -27,6 +27,7 @@ services:
     environment:
       RAW_VALUES: '0'
       COLLAPSE_FIELDS: '1'
+      ALWAYS_USE_HTTPSERVER: '1'
   connector:
     image: bh.cr/balenalabs/connector-armv7hf
     restart: always
@@ -39,4 +40,4 @@ services:
     image: eclipse-mosquitto:1.6.15
     ports:
       - "1883:1883"
-    restart: always  
+    restart: always
