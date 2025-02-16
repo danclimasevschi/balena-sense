@@ -1,38 +1,39 @@
-version: '2'
+version: "2"
 volumes:
-    sense-data:
-    dashboard-data:
+  sense-data:
+  dashboard-data:
 services:
   influxdb:
     restart: always
     image: arm32v7/influxdb@sha256:2fed9b09a672cab330ac3ea1f03616e6821f2235bda64d549f605ef0d7081911
     volumes:
-      - 'sense-data:/var/lib/influxdb'
+      - "sense-data:/var/lib/influxdb"
   dashboard:
     image: bh.cr/balenalabs/dashboard
     restart: always
     volumes:
-        - 'dashboard-data:/data'
+      - "dashboard-data:/data"
     ports:
-        - '80'
+      - "80"
   sensor:
     build: .
     privileged: true
     labels:
-      io.balena.features.kernel-modules: '1'
-      io.balena.features.sysfs: '1'
-      io.balena.features.supervisor-api: '1'
+      io.balena.features.kernel-modules: "1"
+      io.balena.features.sysfs: "1"
+      io.balena.features.supervisor-api: "1"
     expose:
-      - '7575'
+      - "7575"
     environment:
-      RAW_VALUES: '0'
-      COLLAPSE_FIELDS: '1'
-      ALWAYS_USE_HTTPSERVER: '1'
+      RAW_VALUES: "0"
+      COLLAPSE_FIELDS: "1"
+      ALWAYS_USE_HTTPSERVER: "1"
+      MQTT_PUB_INTERVAL: "60"
   connector:
     image: bh.cr/balenalabs/connector-armv7hf
     restart: always
     labels:
-      io.balena.features.balena-api: '1'
+      io.balena.features.balena-api: "1"
     privileged: true
     ports:
       - "8080"

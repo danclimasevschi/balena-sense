@@ -36,6 +36,8 @@ from smbus2 import SMBus
 temperature = None
 humidity = None
 
+lock = threading.Lock()
+
 verbose = True
 
 #
@@ -87,8 +89,9 @@ def sensor_scd30(sensor):
             break
             print("No new SCD30 data...")
             return {"CO2": None, "Temperature": None, "Humidity": None}
-    temperature = sensor.temperature
-    humidity = sensor.relative_humidity
+    with lock:
+        temperature = sensor.temperature
+        humidity = sensor.relative_humidity
 
     return {"CO2": sensor.CO2, "temperature": sensor.temperature, "humidity": sensor.relative_humidity}
 
@@ -104,9 +107,9 @@ def sensor_veml6070(sensor):
 
 def sensor_bme680(sensor):
     global temperature, humidity
-
-    temperature = sensor.temperature
-    humidity = sensor.humidity
+    with lock:
+        temperature = sensor.temperature
+        humidity = sensor.humidity
 
     # eventually set sensor.seaLevelhPa = 1014.5 as a var
     return {
@@ -121,8 +124,9 @@ def sensor_bme680(sensor):
 def sensor_bme280(sensor):
     global temperature, humidity
 
-    temperature = sensor.temperature
-    humidity = sensor.humidity
+    with lock:
+        temperature = sensor.temperature
+        humidity = sensor.humidity
 
     # eventually set sensor.seaLevelhPa = 1014.5 as a var
     return {
@@ -136,7 +140,8 @@ def sensor_bme280(sensor):
 def sensor_bmp280(sensor):
     global temperature
 
-    temperature = sensor.temperature
+    with lock:
+        temperature = sensor.temperature
 
     # eventually set sensor.seaLevelhPa = 1014.5 as a var
     return {"temperature": sensor.temperature, "pressure": sensor.pressure, "altitude": sensor.altitude}
@@ -145,8 +150,9 @@ def sensor_bmp280(sensor):
 def sensor_ms8607(sensor):
     global temperature, humidity
 
-    temperature = sensor.temperature
-    humidity = sensor.relative_humidity
+    with lock:
+        temperature = sensor.temperature
+        humidity = sensor.relative_humidity
 
     return {"temperature": sensor.temperature, "humidity": sensor.relative_humidity, "pressure": sensor.pressure}
 
@@ -154,8 +160,9 @@ def sensor_ms8607(sensor):
 def sensor_htu21d(sensor):
     global temperature, humidity
 
-    temperature = sensor.temperature
-    humidity = sensor.relative_humidity
+    with lock:
+        temperature = sensor.temperature
+        humidity = sensor.relative_humidity
 
     return {"temperature": sensor.temperature, "humidity": sensor.relative_humidity}
 
@@ -167,8 +174,9 @@ def sensor_ltr390(sensor):
 def sensor_aht20(sensor):
     global temperature, humidity
 
-    temperature = sensor.temperature
-    humidity = sensor.relative_humidity
+    with lock:
+        temperature = sensor.temperature
+        humidity = sensor.relative_humidity
 
     return {"temperature": sensor.temperature, "humidity": sensor.relative_humidity}
 
@@ -242,8 +250,9 @@ def sensor_sht4x(sensor):
     sensor.mode = adafruit_sht4x.Mode.NOHEAT_HIGHPRECISION
     # Can also set the mode to enable heater - make a device variable
     # sht.mode = adafruit_sht4x.Mode.LOWHEAT_100MS
-    temperature = sensor.temperature
-    humidity = sensor.relative_humidity
+    with lock:
+        temperature = sensor.temperature
+        humidity = sensor.relative_humidity
     return {
         "temperature": sensor.temperature,
         "humidity": sensor.relative_humidity,
@@ -325,7 +334,8 @@ def get_reading():
     for sensor in sensor_list:
         # print(sensor)
         if sensor is not None:
-            return_dict[sensor_dict[i]["short"]] = sensor_dict[i]["func"](sensor)
+            with lock:
+                return_dict[sensor_dict[i]["short"]] = sensor_dict[i]["func"](sensor)
         # print("{0}: {1}".format(sensor_dict[i]['short'], sensor_dict[i]['func'](sensor)))
         i = i + 1
 
@@ -391,7 +401,7 @@ if enable_httpserver == "True":
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((SERVER_HOST, SERVER_PORT))
-    server_socket.listen(5)  # Allow up to 5 pending connections
+    server_socket.listen(1)  # Allow up to 1 pending connections
     print("HTTP server listening on port {0}...".format(SERVER_PORT))
 
     t = threading.Thread(target=background_web, args=(server_socket,))
