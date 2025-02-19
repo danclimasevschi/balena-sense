@@ -37,7 +37,9 @@ temperature = None
 humidity = None
 
 verbose = True
+measurement = {}
 
+lock = threading.Lock()
 #
 # This section has all of the functions specific to each supported sensor to read its data
 #
@@ -287,7 +289,7 @@ def handle_client(client_connection):
     try:
         request = client_connection.recv(1024).decode()
         print("HTTP client request: {}".format(request))
-        response = "HTTP/1.0 200 OK\n\n" + json.dumps(get_reading())
+        response = "HTTP/1.0 200 OK\n\n" + json.dumps(get_measurements())
         client_connection.sendall(response.encode())
         print("HTTP response sent.")
     except Exception as e:
@@ -318,7 +320,15 @@ def read_chip_id(bus, device, loc):
     return chip_id
 
 
-def get_reading():
+def get_measurements():
+    global measurement
+    with lock:
+        return measurement
+
+
+def collect_measurements():
+    start_time = time.time()
+    print("----Collecting measurements----")
     i = 0
     return_dict = {}
     for sensor in sensor_list:
@@ -327,7 +337,8 @@ def get_reading():
             return_dict[sensor_dict[i]["short"]] = sensor_dict[i]["func"](sensor)
         # print("{0}: {1}".format(sensor_dict[i]['short'], sensor_dict[i]['func'](sensor)))
         i = i + 1
-
+    duration = time.time() - start_time
+    print(f"----Done collecting {duration}(s)----")
     return return_dict
 
 
@@ -685,14 +696,16 @@ print("Starting measurements...")
 
 while True:
     time.sleep(interval)
-    print("----The only one reading measurements is tcp server----")
-    continue
+    new_measurements = collect_measurements()
+
+    with lock:
+        measurement = new_measurements
 
     if verbose:
-        print("{}:".format(datetime.datetime.now()))
-        print(get_reading())
-        print("------------------------------")
+        print_str = f"Verbose {datetime.datetime.now()} \n {json.dumps(new_measurements)}"
+        print_str += "\n------------------------------"
+        print(print_str)
     if mqtt_address != "none":
-        client.publish(publish_topic, json.dumps(get_reading()))
+        client.publish(publish_topic, json.dumps(new_measurements))
         if verbose:
             print("Publishing MQTT...")
