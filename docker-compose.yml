@@ -28,7 +28,7 @@ services:
       RAW_VALUES: "0"
       COLLAPSE_FIELDS: "1"
       ALWAYS_USE_HTTPSERVER: "1"
-      MQTT_PUB_INTERVAL: "60"
+      MQTT_PUB_INTERVAL: "30"
   connector:
     image: bh.cr/balenalabs/connector-armv7hf
     restart: always
