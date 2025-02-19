@@ -36,8 +36,6 @@ from smbus2 import SMBus
 temperature = None
 humidity = None
 
-lock = threading.Lock()
-
 verbose = True
 
 #
@@ -89,9 +87,8 @@ def sensor_scd30(sensor):
             break
             print("No new SCD30 data...")
             return {"CO2": None, "Temperature": None, "Humidity": None}
-    with lock:
-        temperature = sensor.temperature
-        humidity = sensor.relative_humidity
+    temperature = sensor.temperature
+    humidity = sensor.relative_humidity
 
     return {"CO2": sensor.CO2, "temperature": sensor.temperature, "humidity": sensor.relative_humidity}
 
@@ -107,9 +104,8 @@ def sensor_veml6070(sensor):
 
 def sensor_bme680(sensor):
     global temperature, humidity
-    with lock:
-        temperature = sensor.temperature
-        humidity = sensor.humidity
+    temperature = sensor.temperature
+    humidity = sensor.humidity
 
     # eventually set sensor.seaLevelhPa = 1014.5 as a var
     return {
@@ -124,9 +120,8 @@ def sensor_bme680(sensor):
 def sensor_bme280(sensor):
     global temperature, humidity
 
-    with lock:
-        temperature = sensor.temperature
-        humidity = sensor.humidity
+    temperature = sensor.temperature
+    humidity = sensor.humidity
 
     # eventually set sensor.seaLevelhPa = 1014.5 as a var
     return {
@@ -140,8 +135,7 @@ def sensor_bme280(sensor):
 def sensor_bmp280(sensor):
     global temperature
 
-    with lock:
-        temperature = sensor.temperature
+    temperature = sensor.temperature
 
     # eventually set sensor.seaLevelhPa = 1014.5 as a var
     return {"temperature": sensor.temperature, "pressure": sensor.pressure, "altitude": sensor.altitude}
@@ -150,9 +144,8 @@ def sensor_bmp280(sensor):
 def sensor_ms8607(sensor):
     global temperature, humidity
 
-    with lock:
-        temperature = sensor.temperature
-        humidity = sensor.relative_humidity
+    temperature = sensor.temperature
+    humidity = sensor.relative_humidity
 
     return {"temperature": sensor.temperature, "humidity": sensor.relative_humidity, "pressure": sensor.pressure}
 
@@ -160,9 +153,8 @@ def sensor_ms8607(sensor):
 def sensor_htu21d(sensor):
     global temperature, humidity
 
-    with lock:
-        temperature = sensor.temperature
-        humidity = sensor.relative_humidity
+    temperature = sensor.temperature
+    humidity = sensor.relative_humidity
 
     return {"temperature": sensor.temperature, "humidity": sensor.relative_humidity}
 
@@ -174,9 +166,8 @@ def sensor_ltr390(sensor):
 def sensor_aht20(sensor):
     global temperature, humidity
 
-    with lock:
-        temperature = sensor.temperature
-        humidity = sensor.relative_humidity
+    temperature = sensor.temperature
+    humidity = sensor.relative_humidity
 
     return {"temperature": sensor.temperature, "humidity": sensor.relative_humidity}
 
@@ -250,9 +241,8 @@ def sensor_sht4x(sensor):
     sensor.mode = adafruit_sht4x.Mode.NOHEAT_HIGHPRECISION
     # Can also set the mode to enable heater - make a device variable
     # sht.mode = adafruit_sht4x.Mode.LOWHEAT_100MS
-    with lock:
-        temperature = sensor.temperature
-        humidity = sensor.relative_humidity
+    temperature = sensor.temperature
+    humidity = sensor.relative_humidity
     return {
         "temperature": sensor.temperature,
         "humidity": sensor.relative_humidity,
@@ -299,6 +289,7 @@ def handle_client(client_connection):
         print("HTTP client request: {}".format(request))
         response = "HTTP/1.0 200 OK\n\n" + json.dumps(get_reading())
         client_connection.sendall(response.encode())
+        print("HTTP response sent.")
     except Exception as e:
         print(f"Error handling request: {e}")
     finally:
@@ -309,8 +300,7 @@ def background_web(server_socket):
     while True:
         try:
             client_connection, client_address = server_socket.accept()
-            client_thread = threading.Thread(target=handle_client, args=(client_connection,))
-            client_thread.start()
+            handle_client(client_connection)
         except Exception as e:
             print(f"Error accepting connection: {e}")
 
@@ -334,8 +324,7 @@ def get_reading():
     for sensor in sensor_list:
         # print(sensor)
         if sensor is not None:
-            with lock:
-                return_dict[sensor_dict[i]["short"]] = sensor_dict[i]["func"](sensor)
+            return_dict[sensor_dict[i]["short"]] = sensor_dict[i]["func"](sensor)
         # print("{0}: {1}".format(sensor_dict[i]['short'], sensor_dict[i]['func'](sensor)))
         i = i + 1
 
@@ -695,6 +684,10 @@ for sensor_id, sensor_info in sensor_dict.items():
 print("Starting measurements...")
 
 while True:
+    time.sleep(interval)
+    print("----The only one reading measurements is tcp server----")
+    continue
+
     if verbose:
         print("{}:".format(datetime.datetime.now()))
         print(get_reading())
@@ -703,5 +696,3 @@ while True:
         client.publish(publish_topic, json.dumps(get_reading()))
         if verbose:
             print("Publishing MQTT...")
-
-    time.sleep(interval)
