@@ -2,6 +2,9 @@ version: "2"
 volumes:
   sense-data:
   dashboard-data:
+  pihole_config: {}
+  tailscale: {}
+
 services:
   influxdb:
     restart: always
@@ -42,3 +45,80 @@ services:
     ports:
       - "1883:1883"
     restart: always
+
+  pihole:
+    build: balena-pihole/pihole
+    cap_add:
+      # See https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+      # Required if you are using Pi-hole as your DHCP server, else not needed
+      - NET_ADMIN
+      # Required if you are using Pi-hole as your NTP client to be able to set the host's system time
+      - SYS_TIME
+      # Optional, if Pi-hole should get some more processing time
+      - SYS_NICE
+    volumes:
+      - "pihole_config:/etc/pihole"
+    dns:
+      - "127.0.0.1"
+      - "1.1.1.1"
+    network_mode: host
+    tmpfs:
+      - /tmp
+      - /run
+      - /var/log/pihole
+
+  padd:
+    build: balena-pihole/padd
+    network_mode: host
+    labels:
+      io.balena.features.dbus: "1"
+    volumes:
+      - "pihole_config:/etc/pihole:ro"
+    cap_add:
+      - SYS_TTY_CONFIG
+    devices:
+      - /dev/tty0
+      - /dev/tty1
+    tmpfs:
+      - /tmp
+      - /run
+
+  unbound:
+    build: balena-pihole/unbound
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "5053:5053/tcp"
+      - "5053:5053/udp"
+
+  # https://github.com/balena-labs-projects/fbcp
+  # https://hub.balena.io/blocks/1792683/fbcp
+  fbcp:
+    image: bh.cr/balenalabs/fbcp/1.0.4
+    privileged: true
+
+  # https://github.com/balenablocks/hostname
+  # https://hub.balena.io/blocks/1918776/hostname-rpi
+  hostname:
+    image: bh.cr/g_tomas_migone1/hostname-rpi/0.2.1
+    restart: no
+    labels:
+      io.balena.features.supervisor-api: 1
+    environment:
+      SET_HOSTNAME: pihole
+
+  # https://github.com/klutchell/balena-tailscale
+  tailscale:
+    build: balena-pihole/tailscale
+    restart: on-failure
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    labels:
+      io.balena.features.kernel-modules: 1
+    tmpfs:
+      - /tmp
+      - /var/run/
+    volumes:
+      - tailscale:/var/lib/tailscale
